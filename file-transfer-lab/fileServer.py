@@ -1,42 +1,69 @@
-import os, re, socket, sys, time
+#!/usr/bin/env python3
+
+import sys, re, os, socket
 
 def main():
-    serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serverSocket.bind(("localhost", 50001))
+
+    host,port = parseArguments()
+
+    if host is None:
+        print("Default IP address being used:127.0.0.1")
+        host = "127.0.0.1"
+    if port is None:
+        print("Default port being used:50000")
+        port = 50000
+
     
-    serverSocket.listen(1)
+    addrFamily = socket.AF_INET
+    socktype = socket.SOCK_STREAM
+    addrPort = (host,port)
 
-    conn, addr = serverSocket.accept()
-    print("connected") #Used for debugging
-    fileName = receive(conn)
-    found = os.path.exists(fileName)
+    serverSocket = socket.socket(addrFamily,socktype)
 
-    if found: #need to fix appending copy to the name of the file
-        print("A file with that name already exists, making copy")
-        Contents = receive(conn)
-        name,ext = re.split('.',fileName,1)
-        name = name+"_copy"
-        newFile = open(name+ext,'x')
-        newFile.write(Contents)
-        newFile.close()
+    if serverSocket is None:
+        print('could not open socket')
+        sys.exit(1)
+
+    serverSocket.bind(addrPort)
+    serverSocket.listen(5)
+    print("Listening on: ",addrPort)
+
+    while True:
+        sock, addr = serverSocket.accept()
+
+        from framedSock  import framedSend,framedRecieve
+
+        if not os.fork():
+            print("new cild process handling connection from",addr) #Used for debugging
+            fileName = framedRecieve(sock)
+            try:
+                newFile = open(fileName,"x")
+            except :
+                print("File already exists!")
+                sys.exit(1)
+            
+            recieved = framedRecieve(sock)
+            while recieved is not None:
+                newFile.write()
+                recieved = framedRecieve(sock)
+            print("Finished recieving")
+            newFile.close()
+            sys.exit(0)
+
+def parseArguments():
+    if(len(sys.argv) == 1):
+        return None,None
+    if(len(sys.argv) == 2):
+        try:
+            host, port = re.split(":",sys.argv[1])
+            port = int(port)
+            return host,port
+        except:
+            port = sys.argv[1]
+            port = int(port)
+            return None,port
     else:
-        Contents = receive(conn)
-        newFile = open(fileName,'x')
-        newFile.write(Contents)
-        newFile.close()
-    
-
-    fileTR = 0
-
-def receive(conn):
-    received = conn.recv(64).decode()
-    size,msg = re.split(':',received,1)
-    size = int(size) - 1
-
-    while len(msg) < size:
-        msg = msg + conn.recv(64).decode()
-        
-    return msg
-
+        print("Too many arguments!")
+        sys.exit(1)
 if __name__ == '__main__':
     main()
