@@ -31,22 +31,22 @@ def main():
     while True:
         sock, addr = serverSocket.accept()
 
-        from framedSock  import framedSend,framedRecieve
+        from framedSock  import framedSend,framedReceive
 
         if not os.fork():
             print("new cild process handling connection from",addr) #Used for debugging
-            fileName = framedRecieve(sock)
+            fileName = framedReceive(sock)
             try:
                 newFile = open(fileName,"x")
             except :
                 print("File already exists!")
                 sys.exit(1)
             
-            recieved = framedRecieve(sock)
-            while recieved is not None:
-                newFile.write()
-                recieved = framedRecieve(sock)
-            print("Finished recieving")
+            received = framedReceive(sock)
+            while received is not None:
+                newFile.write(received.decode())
+                received = framedReceive(sock)
+            print("Finished receiving")
             newFile.close()
             sys.exit(0)
 
