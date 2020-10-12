@@ -43,9 +43,17 @@ def main():
                 sys.exit(1)
             
             received = framedReceive(sock)
-            while received is not None:
+            if(received is None):
+                os.remove(fileName)
+                print("Something went wrong, the file could not be fully recieved")
+                sys.exit(1)
+            while received != b'DoneSending':
                 newFile.write(received.decode())
                 received = framedReceive(sock)
+                if(received is None):
+                    os.remove(fileName)
+                    print("Something went wrong, the file could not be fully recieved")
+                    sys.exit(1)
             print("Finished receiving")
             newFile.close()
             sys.exit(0)

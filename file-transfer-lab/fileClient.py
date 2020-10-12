@@ -4,7 +4,6 @@ import os, re, socket, sys
 from framedSock import framedSend, framedReceive
 
 def main():
-    print(sys.argv)
     arguments = parseArguments()
 
     addrFamily = socket.AF_INET
@@ -30,7 +29,7 @@ def sendFile(socket,source,destination):
     framedSend(socket,destination.encode())
     for line in fileSend:
         framedSend(socket,line.encode())
-    framedSend(socket,b'')
+    framedSend(socket,b'DoneSending')
 
 def parseArguments():
     arguments ={}
@@ -54,7 +53,7 @@ def parseArguments():
             sys.exit(1)
         if(len(sys.argv) == 4):
             try:
-                fileName,ext = re.split("\.",sys.argv[3])
+                fileName,ext = re.split('\.',sys.argv[3])
                 arguments["destination"] = sys.argv[3]
             except:
                 print("Cannot find valid extension in destination file argument")
