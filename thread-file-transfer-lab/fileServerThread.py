@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys, re, os, socket
-from threading import Thread;
+from threading import Thread, Lock
 from encapFramedSock import EncapFramedSock
 
 def main():
@@ -35,7 +35,13 @@ def main():
         server = Server(sockAddr)
         server.start()
 
+global fileLock 
+fileLock = Lock() #Used to access activeFiles
+global activeFiles 
+activeFiles = {} #Contains all files that are current being transferred.
+
 class Server(Thread):
+
     def __init__(self, sockAddr):
         Thread.__init__(self)
         self.sock, self.addr = sockAddr
@@ -44,26 +50,48 @@ class Server(Thread):
         print("new thread handling connection from", self.addr)
         while True:
             fileName = self.fsock.receive()
-            try:
-                newFile = open(fileName,"x")
-            except :
-                print("File already exists!")
-                sys.exit(1)
-            received = self.fsock.receive()
-            if(received is None):
-                os.remove(fileName)
-                print("Something went wrong, the file could not be fully recieved")
-                sys.exit(1)
-            while received != b'DoneSending':
-                newFile.write(received.decode())
+            start = self.transferStart(fileName)
+            if start:
+                try:
+                    newFile = open(fileName,"x")
+                except :
+                    print("File already exists!")
+                    self.fsock.send(b'File already exists on server, file not transfered')
+                    sys.exit(1)
                 received = self.fsock.receive()
                 if(received is None):
                     os.remove(fileName)
                     print("Something went wrong, the file could not be fully recieved")
                     sys.exit(1)
-            print("Finished receiving")
-            newFile.close()
+                while received != b'DoneSendingFileFromClient':
+                    newFile.write(received.decode())
+                    received = self.fsock.receive()
+                    if(received is None):
+                        os.remove(fileName)
+                        print("Something went wrong, the file could not be fully recieved")
+                        sys.exit(1)
+                newFile.close()
+                self.transferEnd(fileName)
+                print("Finished receiving")
+                self.fsock.send(b'Transfer Successful')
+            else:
+                self.fsock.send(b'Could not transfer file, try again later')
             return          # exit
+    
+    def transferStart(self, fileName):
+        fileLock.acquire()
+        if fileName in activeFiles:
+            fileLock.release()
+            return False
+        else:
+            activeFiles[fileName] = fileName
+            fileLock.release()
+            return True
+
+    def transferEnd(self, fileName):
+        fileLock.acquire()
+        activeFiles.pop(fileName)
+        fileLock.release()
 
 def parseArguments():
     if(len(sys.argv) == 1):
