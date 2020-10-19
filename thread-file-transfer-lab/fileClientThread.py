@@ -22,6 +22,10 @@ def main():
     fsock = EncapFramedSock((clientSocket,addrPort))
 
     sendFile(fsock,arguments["source"],arguments["destination"])
+    transferResult = fsock.receive()
+    transferResult = transferResult.decode()
+    print(transferResult)
+
 
 def sendFile(fsock,source,destination):
     try:
@@ -32,7 +36,7 @@ def sendFile(fsock,source,destination):
     fsock.send(destination.encode())
     for line in fileSend:
         fsock.send(line.encode())
-    fsock.send(b'DoneSending')
+    fsock.send(b'DoneSendingFileFromClient')
 
 def parseArguments():
     arguments ={}
